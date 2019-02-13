@@ -4,9 +4,22 @@ defmodule Bkdrf do
   presented on this site.
   """
 
-  use PhoenixHtmlSanitizer, :basic_html
+  @base_url "http://bkdrf.ru/"
 
-  @basic_url "http://bkdrf.ru/"
+  def cities do
+    @base_url
+    |> get_html
+    |> parse_cities
+    |> show_cities
+  end
+
+  defp parse_cities(raw_html) do
+    raw_html
+  end
+
+  defp show_cities(cities_list) do
+    IO.puts cities_list
+  end
 
   @doc """
   Gets and show info about given city. Page: http://bkdrf.ru/map/<city>
@@ -18,7 +31,7 @@ defmodule Bkdrf do
       ...
   """
   def get(city) do
-    @basic_url <> "map/#{city}"
+    @base_url <> "map/#{city}"
     |> get_html
     |> get_json_data
     |> parse_json
@@ -36,6 +49,7 @@ defmodule Bkdrf do
     |> tl
     |> to_string
     |> String.replace("\\u0022", "\"")
+    |> String.replace("\\\"", "\"")
   end
 
   defp parse_json(data) do
@@ -47,7 +61,8 @@ defmodule Bkdrf do
     |> Enum.map(fn(el) -> el["properties"]["id"] end)
     |> Enum.uniq
     |> Enum.map(fn(uuid) -> {uuid, get_details(uuid) |> HtmlEntities.decode} end)
-    |> Enum.map(fn({uuid, details}) -> {uuid, elem(sanitize(details), 1)} end)
+    |> Enum.map(fn({uuid, details}) -> {uuid, String.replace(details, ~r/<style>.+<\/style>/s, "")} end)
+    |> Enum.map(fn({uuid, details}) -> {uuid, HtmlSanitizeEx.basic_html(details)} end)
   end
 
   defp convert_detailed_info(details) do
@@ -76,33 +91,32 @@ defmodule Bkdrf do
     Enum.map(details,
       fn ({uuid, html_info}) ->
         [
-          type,
-          _,
-          _,
-          address,
-          _,
-          status,
-          _,
-          year,
-          _,
-          start_date,
-          _,
-          end_date,
-          _,
-          description,
-          _,
-          _,
-          substantiation,
-          _,
-          progress,
-          _,
-          _,
-          price,
-          _
+          type, # "Установка систем фото-видео фиксации"
+          _, # "Информация об объекте"
+          _, # "Наименование"
+          address, # "Ул. им. Радищева А.Н. (от ул. им. Мичурина И.В. до ул. Соколовой)"
+          _, # "Статус"
+          status, # "Завершен"
+          _, # "Год работ"
+          year, # "2017"
+          _, # "Дата начала"
+          start_date, # "29.03.2017"
+          _, # "Дата окончания"
+          end_date, # "01.10.2017"
+          _, # "Описание"
+          description, # "Установка комплеса фото- видеофиксации нарушений ПДД"
+          _, # "Показать еще детали"
+          _, # "Основание работ"
+          substantiation, # "ВЦП \"Развитие дорожного хозяйства и обеспечение безопасности дорожного движения на территории муниципального образования \"Город Саратов\" на 2017 год\""
+          _, # "Выполнено"
+          progress, # "100%"
+          _, # "Стоимость работ"
+          price # "3.9 млн руб."
         ] = html_info
         |> String.replace(~r/(<\/[a-z0-9]+>)/, "\\1\n")
         |> String.split("\n")
-        |> Enum.map(fn(piece) -> elem(sanitize(piece, :strip_tags), 1) end)
+        |> Enum.map(fn(piece) -> HtmlSanitizeEx.strip_tags(piece) end)
+        |> Enum.reject(fn(piece) -> piece == "" end)
 
         {uuid, [
           type: type,
@@ -138,6 +152,6 @@ defmodule Bkdrf do
   end
 
   defp get_details(uuid) do
-    FileCache.wrap(uuid, fn -> HTTPoison.get!(@basic_url <> "fragmentInfo/" <> uuid).body end)
+    FileCache.wrap(uuid, fn -> HTTPoison.get!(@base_url <> "fragmentInfo/" <> uuid).body end)
   end
 end

@@ -24,7 +24,8 @@ defmodule Bkdrf.Mixfile do
       {:httpoison, "~> 0.13"},
       {:poison, "~> 3.1"},
       {:html_entities, "~> 0.3"},
-      {:phoenix_html_sanitizer, "~> 1.0.0"}
+      {:html_sanitize_ex, "~> 1.3.0"},
+      {:floki, "~> 0.20.0"}
     ]
   end
 end
